@@ -1,5 +1,7 @@
 module APN
   class Base < ActiveRecord::Base # :nodoc:
+
+    self.abstract_class = true
     
     self.abstract_class = true
     

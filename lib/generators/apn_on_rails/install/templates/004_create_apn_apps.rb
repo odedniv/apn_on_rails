@@ -1,11 +1,4 @@
 class CreateApnApps < ActiveRecord::Migration # :nodoc:
-
-  module APN # :nodoc:
-    class Device < ActiveRecord::Base # :nodoc:
-      self.table_name = 'apn_devices'
-    end
-  end
-
   def self.up
     create_table :apn_apps do |t|
       t.text :apn_dev_cert

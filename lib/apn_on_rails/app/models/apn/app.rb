@@ -14,11 +14,11 @@ class APN::App < APN::Base
 
   # Opens a connection to the Apple APN server and attempts to batch deliver
   # an Array of group notifications.
-  # 
-  # 
+  #
+  #
   # As each APN::GroupNotification is sent the <tt>sent_at</tt> column will be timestamped,
   # so as to not be sent again.
-  # 
+  #
   def send_notifications
     if self.cert.nil?
       raise APN::Errors::MissingCertificateError.new
@@ -40,20 +40,24 @@ class APN::App < APN::Base
 
   def self.send_notifications_for_cert(the_cert, app_id)
     # unless self.unsent_notifications.nil? || self.unsent_notifications.empty?
-    if (app_id == nil)
-      conditions = "app_id is null"
-    else
-      conditions = ["app_id = ?", app_id]
-    end
-    APN::Connection.open_for_delivery({:cert => the_cert}) do |conn, sock|
-      APN::Device.find_each(:conditions => conditions) do |dev|
-        dev.unsent_notifications.each do |noty|
-          conn.write(noty.message_for_sending)
-          noty.sent_at = Time.now
-          noty.save
-        end
+      if (app_id == nil)
+        conditions = "app_id is null"
+      else
+        conditions = ["app_id = ?", app_id]
       end
-    end
+      begin
+        APN::Connection.open_for_delivery({:cert => the_cert}) do |conn, sock|
+          APN::Device.find_each(:conditions => conditions) do |dev|
+            dev.unsent_notifications.each do |noty|
+              conn.write(noty.message_for_sending)
+              noty.sent_at = Time.now
+              noty.save
+            end
+          end
+        end
+      rescue Exception => e
+        log_connection_exception(e)
+      end
     # end
   end
 
@@ -72,13 +76,13 @@ class APN::App < APN::Base
               begin
                 conn.write(gnoty.message_for_sending(device))
               rescue Exception => e
-                puts e.message
+                #puts e.message
                 failed += 1
               end
             end
           end
         end
-        puts "Sent to: #{devices_to_send - failed}/#{devices_to_send} "
+        #puts "Sent to: #{devices_to_send - failed}/#{devices_to_send}"
         gnoty.sent_at = Time.now
         gnoty.save
       end
@@ -115,7 +119,7 @@ class APN::App < APN::Base
   # accepting notifications then the device is deleted. Otherwise
   # it is assumed that the application has been re-installed
   # and is available for notifications.
-  # 
+  #
   # This can be run from the following Rake task:
   #   $ rake apn:feedback:process
   def process_devices
@@ -124,9 +128,7 @@ class APN::App < APN::Base
       return
     end
     APN::App.process_devices_for_cert(self.cert)
-  end
-
-  # process_devices
+  end # process_devices
 
   def self.process_devices
     apps = APN::App.all
@@ -151,10 +153,11 @@ class APN::App < APN::Base
     end
   end
 
-
   protected
-  def log_connection_exception(ex)
-    puts ex.message
+
+  def self.log_connection_exception(ex)
+    STDERR.puts ex.message
+    raise ex
   end
 
 end
